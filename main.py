@@ -92,7 +92,7 @@ def sms_reply():
       user_data = r.get(phone)
       user_data = json.loads(user_data)
       if user_data['state'] == states.REGISTRATION:
-        user_data['state'] = states.PARTICIPATING:
+        user_data['state'] = states.PARTICIPATING
         user_data['name'] = body
         user_data['question'] = 0
         # Send to rails the user that just registered
@@ -119,3 +119,25 @@ def send_message():
             )
 
     return message.sid
+
+@app.route("/answer/", methods=['GET', 'POST'])
+def answer_call():
+    """Respond to incoming phone calls with a brief message."""
+    # Start our TwiML response
+    resp = VoiceResponse()
+
+    # Play music
+    resp.play('https://api.twilio.com/cowbell.mp3', loop=0)
+
+    return str(resp)
+  
+@app.route("/place-call/<user_phone>", methods=['POST'])
+def place_call():
+  user_phone = user_phone
+  call = client.calls.create(
+              url='http://demo.twilio.com/docs/voice.xml',
+              from_=os.environ.get("TWILIO_NUMBER"),
+              to=str(user_phone),
+          )
+
+  return call.sids
