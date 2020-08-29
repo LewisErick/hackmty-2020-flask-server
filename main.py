@@ -2,12 +2,20 @@ import redis
 import os
 import json
 
-from flask import Flask
-from flask import request
+from flask import Flask, request
+from twilio.rest import Client
+from twilio.twiml.messaging_response import MessagingResponse
 from random import randint
 
 app = Flask(__name__)
+
+# Set up Redis
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=os.environ['REDIS_PORT'], db=0)
+
+# Set up Twilio client.
+account_sid = os.environ.get("ACCOUNT_SID")
+auth_token = os.environ.get("AUTH_TOKEN")
+client = Client(account_sid, auth_token)
 
 """
 Start an exam. It gets the id of the test and returns a random generated number
@@ -45,3 +53,69 @@ def register_exam(exam_id, num_questions):
   json_data = json.dumps(exam_data)
   r.set(sms_id, json_data)
   return sms_id
+
+"""
+Gets an sms reply from 'From' phone number with message 'Body'.
+There are multiple states possible to be in:
+
+1. The user is registering for the test:
+
+  In this case the user will be sending a 6 digit code. If it exists then
+  we should proceed and register it in redis and ask for his name.
+  If the code does not exist do nothing.
+
+2. The user is sending his name for the test:
+
+  In this case we will have already received his phone number and have it
+  stored in redis. We should store it and proceed to set him as if his next
+  message will contain the answer to the first question.
+
+3. The user is answering a question:
+
+  We will send the reply to the server and set the state of the user to the
+  next question. If it was the last question then we should delet him from
+  redis.
+"""
+class states:
+  REGISTRATION = "REGISTRATION"
+  PARTICIPATING = "PARTICIPATING"
+
+@app.route("/sms/reply/", methods=['GET', 'POST'])
+def sms_reply():
+    body = request.values.get('Body', None)
+    phone = request.values.get('From', None)
+    # Start our TwiML response.
+    resp = MessagingResponse()
+
+    # If the phone exists then the user might be sending an answer or his name
+    if r.exists(phone):
+      user_data = r.get(phone)
+      user_data = json.loads(user_data)
+      if user_data['state'] == states.REGISTRATION:
+        user_data['state'] = states.PARTICIPATING:
+        user_data['name'] = body
+        user_data['question'] = 0
+        # Send to rails the user that just registered
+      elif user_data['state'] == states.PARTICIPATING:
+        # Get the question id to send it to the server
+        # Send the question to the server
+        user_data['question'] += 1
+        if user_data['question'] == 10: # asdasd
+          pass
+        
+
+    # Add a text message
+    msg = resp.message("Your Phone Number is: %s" % phone)
+
+    return str(resp)
+
+@app.route("/send-sms/<user_phone>", methods=['POST'])
+def send_message():
+    user_phone = user_phone
+    message = client.messages.create(
+                body='Hi there!',
+                from_=os.environ.get("TWILIO_NUMBER"),
+                to=str(user_phone)
+            )
+
+    return message.sid
