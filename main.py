@@ -81,28 +81,22 @@ class states:
   REGISTRATION = "REGISTRATION"
   PARTICIPATING = "PARTICIPATING"
 
-@app.route("/sms/reply/", methods=['GET', 'POST'])
-def sms_reply():
-    body = request.values.get('Body', None)
-    phone = request.values.get('From', None)
-    # Start our TwiML response.
-    resp = MessagingResponse()
-
+def handle_answers(phone, answer):
     # If the phone exists then the user might be sending an answer or his name
     if r.exists(phone):
       user_data = r.get(phone)
       user_data = json.loads(user_data)
       if user_data['state'] == states.REGISTRATION:
         user_data['state'] = states.PARTICIPATING
-        user_data['name'] = body
+        user_data['name'] = answer
         user_data['question'] = 0
         # TODO: Send to rails the user that just registered
-        print(f'{phone} registered to participate as {body}')
+        print(f'{phone} registered to participate as {answer}')
         r.set(phone, json.dumps(user_data))
       elif user_data['state'] == states.PARTICIPATING:
         # TODO: Get the question id to send it to the server
         # TODO: Send the question to the server
-        print(f'{phone} answered {body} to question {user_data["question"]}')
+        print(f'{phone} answered {answer} to question {user_data["question"]}')
         user_data['question'] += 1
         if user_data['question'] == get_exam_data(user_data['test'])['num_questions']:
           # This user has finished the exam, delete data
@@ -111,12 +105,21 @@ def sms_reply():
           r.set(phone, json.dumps(user_data))
     else:
       # Register the user for the test initializing the users data
-      if r.exists(body):
+      if r.exists(answer):
         user_data = {
           'state': states.REGISTRATION,
-          'test': body,
+          'test': answer,
         }
         r.set(phone, json.dumps(user_data))
+
+@app.route("/sms/reply/", methods=['GET', 'POST'])
+def sms_reply():
+    body = request.values.get('Body', None)
+    phone = request.values.get('From', None)
+    # Start our TwiML response.
+    resp = MessagingResponse()
+
+    handle_answers(phone, body)
       
     # Add a text message
     msg = resp.message("Your Phone Number is: %s" % phone)
