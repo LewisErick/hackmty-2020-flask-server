@@ -58,6 +58,9 @@ def register_exam(exam_id, num_questions, questions):
   r.set(sms_id, json_data)
   return sms_id
 
+def answer(phone: str, answer: str):
+  pass
+
 """
 Gets an sms reply from 'From' phone number with message 'Body'.
 There are multiple states possible to be in:
@@ -163,7 +166,7 @@ def answer_call():
     resp.append(gather)
 
     # If the user doesn't select an option, redirect them into a loop
-    resp.redirect('/voice')
+    resp.redirect('/answer/')
 
     return str(resp)
 
@@ -173,22 +176,14 @@ def gather():
     # Start our TwiML response
     resp = VoiceResponse()
 
+    phone = request.values.get('From', None)
+
     # If Twilio's request to our app included already gathered digits,
     # process them
     if 'Digits' in request.values:
         # Get which digit the caller chose
         choice = request.values['Digits']
-
-        # <Say> a different message depending on the caller's choice
-        if choice == '1':
-            resp.say('You selected sales. Good for you!')
-            return str(resp)
-        elif choice == '2':
-            resp.say('You need support. We will help!')
-            return str(resp)
-        else:
-            # If the caller didn't choose 1 or 2, apologize and ask them again
-            resp.say("Sorry, I don't understand that choice.")
+        handle_answers(phone, choice)
 
     # If the user didn't choose 1 or 2 (or anything), send them back to /voice
     resp.redirect('/answer/')
