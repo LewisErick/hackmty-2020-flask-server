@@ -12,14 +12,14 @@ account_sid = os.environ.get("ACCOUNT_SID")
 auth_token = os.environ.get("AUTH_TOKEN")
 client = Client(account_sid, auth_token)
 
-@app.route("/answer", methods=['GET', 'POST'])
+@app.route("/answer/", methods=['GET', 'POST'])
 def answer_call():
     """Respond to incoming phone calls with a brief message."""
     # Start our TwiML response
     resp = VoiceResponse()
 
-    # Read a message aloud to the caller
-    resp.say("Thank you for calling! Have a great day.", voice='alice')
+    # Play music
+    resp.play('https://api.twilio.com/cowbell.mp3', loop=0)
 
     return str(resp)
 
