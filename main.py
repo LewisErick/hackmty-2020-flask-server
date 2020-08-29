@@ -86,31 +86,46 @@ class states:
   REGISTRATION = "REGISTRATION"
   PARTICIPATING = "PARTICIPATING"
 
-def send_answer(phone: str, answer: str, timestamp: datetime.datetime):
+def send_answer(phone: str, answer: str, question_id: str, ts):
   data = {
-    'phone': phone,
-    'str': str,
-    'timestamp': timestamp
+    'student_identifier': phone,
+    'question': question_id,
+    'selection': answer,
+    'timestamp': ts
   }
-  requests.post(os.environ.get("API_ADDRESS"), data)
 
-def handle_answers(phone, answer, timestamp):
+  requests.post(os.environ.get("API_ADDRESS") + 'answers', data=data)
+
+def register_student(name: str, phone: str, quiz_id: str):
+  data = {
+    'username': name,
+    'identifier': phone,
+    'quiz_id': quiz_id
+  }
+
+  requests.post(os.environ.get("API_ADDRESS") + 'student', data=data)
+
+def handle_answers(phone, answer, ts):
     # If the phone exists then the user might be sending an answer or his name
+    print('handle_answers')
     if r.exists(phone):
+      print('enrolled in quizz')
       user_data = r.get(phone)
       user_data = json.loads(user_data)
       exam_data = get_exam_data(user_data['test'])
       quiz_id = exam_data['exam_id']
       if user_data['state'] == states.REGISTRATION:
+        print('register user')
         user_data['state'] = states.PARTICIPATING
         user_data['name'] = answer
         user_data['question'] = 0
-        # TODO: Send to rails the user that just registered (quiz_id, phone, answer/name)
         print(f'{phone} registered to participate as {answer}')
         r.set(phone, json.dumps(user_data))
+
+        register_student(answer, phone, user_data['test'])
       elif user_data['state'] == states.PARTICIPATING:
+        print('send answer')
         question_id = exam_data['questions'][user_data['question']]
-        # TODO: Send the question to the server (quiz_id, question_id, phone)
         print(f'{phone} answered {answer} to question {user_data["question"]}')
         user_data['question'] += 1
         if user_data['question'] == exam_data['num_questions']:
@@ -119,15 +134,18 @@ def handle_answers(phone, answer, timestamp):
         else:
           r.set(phone, json.dumps(user_data))
         
-        send_answer(phone, answer, timestamp)
+        send_answer(phone, answer, ts)
     else:
+      print('enroll quizz')
       # Register the user for the test initializing the users data
       if r.exists(answer):
         user_data = {
           'state': states.REGISTRATION,
           'test': answer,
         }
+        print(phone)
         r.set(phone, json.dumps(user_data))
+        print(r.exists(phone))
 
 def get_exam_data(exam_id):
   exam_data = r.get(exam_id)
@@ -167,6 +185,7 @@ def send_message():
 @app.route("/answer/", methods=['GET', 'POST'])
 def answer_call():
     """Respond to incoming phone calls with a brief message."""
+    phone = request.values.get('From', None)
     # Start our TwiML response
     resp = VoiceResponse()
 
@@ -174,7 +193,17 @@ def answer_call():
     # resp.play('http://ocrmirror.org/files/music/remixes/Street_Fighter_2_Guile%27s_Theme_Goes_with_Metal_OC_ReMix.mp3', loop=0)
     
     # Start our <Gather> verb
-    gather = Gather(num_digits=1, action='/gather')
+    if r.exists(phone):
+      user_data = r.get(phone)
+      user_data = json.loads(user_data)
+      if user_data['state'] == states.REGISTRATION:
+        resp.say('Please say your name')
+        gather = Gather(profanity_filter=True, input='speech', language='es-MX', action='/gather-speech')
+      elif user_data['state'] == states.PARTICIPATING:
+        gather = Gather(num_digits=1, action='/gather-digits')
+    else:
+      resp.say('Please enter the 6 digit quizz I D.')
+      gather = Gather(num_digits=6, action='/gather-digits')
     resp.append(gather)
 
     # If the user doesn't select an option, redirect them into a loop
@@ -182,8 +211,8 @@ def answer_call():
 
     return str(resp)
 
-@app.route('/gather', methods=['GET', 'POST'])
-def gather():
+@app.route('/gather-speech', methods=['GET', 'POST'])
+def gather_speech():
     """Processes results from the <Gather> prompt in /voice"""
     # Start our TwiML response
     resp = VoiceResponse()
@@ -191,17 +220,36 @@ def gather():
     phone = request.values.get('From', None)
     date_created = datetime.datetime.now()
 
+    print(request.values)
+
+    # Go back to call.
+    resp.redirect('/answer/')
+
+    return str(resp)
+
+@app.route('/gather-digits', methods=['GET', 'POST'])
+def gather_digits():
+    """Processes results from the <Gather> prompt in /voice"""
+    # Start our TwiML response
+    resp = VoiceResponse()
+
+    phone = request.values.get('From', None)
+    date_created = datetime.datetime.now()
+
+    print(request.values)
+
     # If Twilio's request to our app included already gathered digits,
     # process them
     if 'Digits' in request.values:
         # Get which digit the caller chose
         choice = request.values['Digits']
+        print(choice)
         handle_answers(phone, choice, date_created)
 
     # Go back to call.
     resp.redirect('/answer/')
 
-    return str(resp)  
+    return str(resp)
 
 @app.route("/place-call/<user_phone>", methods=['POST'])
 def place_call():
