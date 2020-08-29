@@ -128,7 +128,7 @@ def answer_call():
     resp = VoiceResponse()
 
     # Play music
-    resp.play('https://api.twilio.com/cowbell.mp3', loop=0)
+    resp.play('http://ocrmirror.org/files/music/remixes/Street_Fighter_2_Guile%27s_Theme_Goes_with_Metal_OC_ReMix.mp3', loop=0)
 
     return str(resp)
   
@@ -142,3 +142,6 @@ def place_call():
           )
 
   return call.sids
+
+if __name__ == "__main__":
+    app.run(debug=True)
