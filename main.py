@@ -55,9 +55,6 @@ def register_exam(exam_id, num_questions):
   r.set(sms_id, json_data)
   return sms_id
 
-def answer(phone: str, answer: str):
-  pass
-
 """
 Gets an sms reply from 'From' phone number with message 'Body'.
 There are multiple states possible to be in:
@@ -84,6 +81,9 @@ class states:
   REGISTRATION = "REGISTRATION"
   PARTICIPATING = "PARTICIPATING"
 
+def send_answer(phone: str, answer: str):
+  pass
+
 def handle_answers(phone, answer):
     # If the phone exists then the user might be sending an answer or his name
     if r.exists(phone):
@@ -106,6 +106,8 @@ def handle_answers(phone, answer):
           r.delete(phone)
         else:
           r.set(phone, json.dumps(user_data))
+        
+        send_answer(phone, answer)
     else:
       # Register the user for the test initializing the users data
       if r.exists(answer):
@@ -156,7 +158,6 @@ def answer_call():
     
     # Start our <Gather> verb
     gather = Gather(num_digits=1, action='/gather')
-    gather.say('Give your answer')
     resp.append(gather)
 
     # If the user doesn't select an option, redirect them into a loop
@@ -179,7 +180,7 @@ def gather():
         choice = request.values['Digits']
         handle_answers(phone, choice)
 
-    # If the user didn't choose 1 or 2 (or anything), send them back to /voice
+    # Go back to call.
     resp.redirect('/answer/')
 
     return str(resp)  
