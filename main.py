@@ -86,12 +86,12 @@ class states:
   REGISTRATION = "REGISTRATION"
   PARTICIPATING = "PARTICIPATING"
 
-def send_answer(phone: str, answer: str, question_id: str, ts):
+def send_answer(phone: str, answer: str, quiz_id: str, ts):
   data = {
     'student_identifier': phone,
-    'question': question_id,
     'selection': answer,
-    'timestamp': ts
+    'quiz_id': quiz_id,
+    'timestamp': ts.timestamp()
   }
 
   requests.post(os.environ.get("API_ADDRESS") + 'answers', data=data)
@@ -103,30 +103,25 @@ def register_student(name: str, phone: str, quiz_id: str):
     'quiz_id': quiz_id
   }
 
-  requests.post(os.environ.get("API_ADDRESS") + 'student', data=data)
+  requests.post(os.environ.get("API_ADDRESS") + 'students', data=data)
 
 def handle_answers(phone, answer, ts):
     # If the phone exists then the user might be sending an answer or his name
-    print('handle_answers')
     if r.exists(phone):
-      print('enrolled in quizz')
       user_data = r.get(phone)
       user_data = json.loads(user_data)
       exam_data = get_exam_data(user_data['test'])
       quiz_id = exam_data['exam_id']
       if user_data['state'] == states.REGISTRATION:
-        print('register user')
         user_data['state'] = states.PARTICIPATING
         user_data['name'] = answer
         user_data['question'] = 0
-        print(f'{phone} registered to participate as {answer}')
         r.set(phone, json.dumps(user_data))
 
-        register_student(answer, phone, user_data['test'])
+        register_student(answer, phone, quiz_id)
+        return f'{phone} se registró con el nombre {answer}'
       elif user_data['state'] == states.PARTICIPATING:
-        print('send answer')
-        question_id = exam_data['questions'][user_data['question']]
-        print(f'{phone} answered {answer} to question {user_data["question"]}')
+        question_id = exam_data['questions'][user_data['question']]        
         user_data['question'] += 1
         if user_data['question'] == exam_data['num_questions']:
           # This user has finished the exam, delete data
@@ -134,18 +129,19 @@ def handle_answers(phone, answer, ts):
         else:
           r.set(phone, json.dumps(user_data))
         
-        send_answer(phone, answer, ts)
+        send_answer(phone, answer, quiz_id, ts)
+        return f'{phone} contestó {answer} a la pregunta {user_data["question"]}'
     else:
-      print('enroll quizz')
       # Register the user for the test initializing the users data
       if r.exists(answer):
         user_data = {
           'state': states.REGISTRATION,
           'test': answer,
         }
-        print(phone)
         r.set(phone, json.dumps(user_data))
-        print(r.exists(phone))
+        return 'Se ha registrado exitosamente al cuestionario, ahora solo falta el nombre.'
+      else:
+        return 'El cuestionario no existe.'
 
 def get_exam_data(exam_id):
   exam_data = r.get(exam_id)
@@ -164,10 +160,10 @@ def sms_reply():
     # Start our TwiML response.
     resp = MessagingResponse()
 
-    handle_answers(phone, body, date_created)
+    text_response = handle_answers(phone, body, date_created)
       
     # Add a text message
-    msg = resp.message("Your Phone Number is: %s" % phone)
+    msg = resp.message(text_response)
 
     return str(resp)
 
@@ -197,12 +193,12 @@ def answer_call():
       user_data = r.get(phone)
       user_data = json.loads(user_data)
       if user_data['state'] == states.REGISTRATION:
-        resp.say('Please say your name')
+        resp.say('Di tu nombre por favor', language='es-MX')
         gather = Gather(profanity_filter=True, input='speech', language='es-MX', action='/gather-speech')
       elif user_data['state'] == states.PARTICIPATING:
         gather = Gather(num_digits=1, action='/gather-digits')
     else:
-      resp.say('Please enter the 6 digit quizz I D.')
+      resp.say('Presiona los seis dígitos del identificador del cuestionario', language='es-MX')
       gather = Gather(num_digits=6, action='/gather-digits')
     resp.append(gather)
 
@@ -219,8 +215,10 @@ def gather_speech():
 
     phone = request.values.get('From', None)
     date_created = datetime.datetime.now()
+    name = request.values.get('SpeechResult', None)
 
-    print(request.values)
+    speech_response = handle_answers(phone, name, date_created)
+    resp.say(speech_response, language='es-MX')
 
     # Go back to call.
     resp.redirect('/answer/')
@@ -235,8 +233,6 @@ def gather_digits():
 
     phone = request.values.get('From', None)
     date_created = datetime.datetime.now()
-
-    print(request.values)
 
     # If Twilio's request to our app included already gathered digits,
     # process them
