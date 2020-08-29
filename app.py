@@ -1,8 +1,9 @@
 import os
 from twilio.rest import Client
 
-from flask import Flask
+from flask import Flask, request
 from twilio.twiml.voice_response import VoiceResponse
+from twilio.twiml.messaging_response import MessagingResponse
 
 app = Flask(__name__)
 
@@ -19,6 +20,18 @@ def answer_call():
 
     # Read a message aloud to the caller
     resp.say("Thank you for calling! Have a great day.", voice='alice')
+
+    return str(resp)
+
+@app.route("/sms/reply/", methods=['GET', 'POST'])
+def sms_reply():
+    body = request.values.get('Body', None)
+    phone = request.values.get('From', None)
+    # Start our TwiML response.
+    resp = MessagingResponse()
+
+    # Add a text message
+    msg = resp.message("Your Phone Number is: %s" % phone)
 
     return str(resp)
 
