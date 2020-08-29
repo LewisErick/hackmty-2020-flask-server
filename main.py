@@ -4,7 +4,7 @@ import json
 
 from flask import Flask, request
 from twilio.rest import Client
-from twilio.twiml.voice_response import Play, VoiceResponse
+from twilio.twiml.voice_response import Play, VoiceResponse, Gather
 from twilio.twiml.messaging_response import MessagingResponse
 from random import randint
 
@@ -128,10 +128,46 @@ def answer_call():
     resp = VoiceResponse()
 
     # Play music
-    resp.play('http://ocrmirror.org/files/music/remixes/Street_Fighter_2_Guile%27s_Theme_Goes_with_Metal_OC_ReMix.mp3', loop=0)
+    # resp.play('http://ocrmirror.org/files/music/remixes/Street_Fighter_2_Guile%27s_Theme_Goes_with_Metal_OC_ReMix.mp3', loop=0)
+    
+    # Start our <Gather> verb
+    gather = Gather(num_digits=1, action='/gather')
+    gather.say('Give your answer')
+    resp.append(gather)
+
+    # If the user doesn't select an option, redirect them into a loop
+    resp.redirect('/voice')
 
     return str(resp)
-  
+
+@app.route('/gather', methods=['GET', 'POST'])
+def gather():
+    """Processes results from the <Gather> prompt in /voice"""
+    # Start our TwiML response
+    resp = VoiceResponse()
+
+    # If Twilio's request to our app included already gathered digits,
+    # process them
+    if 'Digits' in request.values:
+        # Get which digit the caller chose
+        choice = request.values['Digits']
+
+        # <Say> a different message depending on the caller's choice
+        if choice == '1':
+            resp.say('You selected sales. Good for you!')
+            return str(resp)
+        elif choice == '2':
+            resp.say('You need support. We will help!')
+            return str(resp)
+        else:
+            # If the caller didn't choose 1 or 2, apologize and ask them again
+            resp.say("Sorry, I don't understand that choice.")
+
+    # If the user didn't choose 1 or 2 (or anything), send them back to /voice
+    resp.redirect('/answer/')
+
+    return str(resp)  
+
 @app.route("/place-call/<user_phone>", methods=['POST'])
 def place_call():
   user_phone = user_phone
