@@ -14,9 +14,9 @@ app = Flask(__name__)
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=os.environ['REDIS_PORT'], db=0)
 
 # Set up Twilio client.
-account_sid = os.environ.get("ACCOUNT_SID")
-auth_token = os.environ.get("AUTH_TOKEN")
-client = Client(account_sid, auth_token)
+# account_sid = os.environ.get("ACCOUNT_SID")
+# auth_token = os.environ.get("AUTH_TOKEN")
+# client = Client(account_sid, auth_token)
 
 """
 Start an exam. It gets the id of the test and returns a random generated number
@@ -99,20 +99,38 @@ def sms_reply():
         user_data['state'] = states.PARTICIPATING
         user_data['name'] = body
         user_data['question'] = 0
-        # Send to rails the user that just registered
+        # TODO: Send to rails the user that just registered
+        print(f'{phone} registered to participate as {body}')
+        r.set(phone, json.dumps(user_data))
       elif user_data['state'] == states.PARTICIPATING:
-        # Get the question id to send it to the server
-        # Send the question to the server
+        # TODO: Get the question id to send it to the server
+        # TODO: Send the question to the server
+        print(f'{phone} answered {body} to question {user_data["question"]}')
         user_data['question'] += 1
-        if user_data['question'] == 10: # asdasd
-          pass
-        
-
+        if user_data['question'] == get_exam_data(user_data['test'])['num_questions']:
+          # This user has finished the exam, delete data
+          r.delete(phone)
+        else:
+          r.set(phone, json.dumps(user_data))
+    else:
+      # Register the user for the test initializing the users data
+      if r.exists(body):
+        user_data = {
+          'state': states.REGISTRATION,
+          'test': body,
+        }
+        r.set(phone, json.dumps(user_data))
+      
     # Add a text message
     msg = resp.message("Your Phone Number is: %s" % phone)
 
     return str(resp)
 
+def get_exam_data(exam_id):
+  exam_data = r.get(exam_id)
+  exam_data = json.loads(exam_data)
+  return exam_data
+  
 @app.route("/send-sms/<user_phone>", methods=['POST'])
 def send_message():
     user_phone = user_phone
