@@ -25,6 +25,7 @@ Expected data in the request:
 {
   "exam_id": ID,
   "num_questions": Number,
+  "questions": [Number],
 }
 
 Returns:
@@ -37,19 +38,21 @@ def start_exam():
   req_data = request.get_json()
   exam_id = req_data['exam_id']
   num_questions = req_data['num_questions']
-  sms_id = register_exam(exam_id, num_questions)
+  questions = req_data['questions']
+  sms_id = register_exam(exam_id, num_questions, questions)
   return {
     "sms_id": sms_id,
   }
 
 
-def register_exam(exam_id, num_questions):
+def register_exam(exam_id, num_questions, questions):
   sms_id = None
   while sms_id is None or r.exists(sms_id):
     sms_id = str(randint(0, 999999)).zfill(6)
   exam_data = {
     'exam_id': exam_id,
     'num_questions': num_questions,
+    'questions': questions,
   }
   json_data = json.dumps(exam_data)
   r.set(sms_id, json_data)
@@ -86,19 +89,21 @@ def handle_answers(phone, answer):
     if r.exists(phone):
       user_data = r.get(phone)
       user_data = json.loads(user_data)
+      exam_data = get_exam_data(user_data['test'])
+      quiz_id = exam_data['exam_id']
       if user_data['state'] == states.REGISTRATION:
         user_data['state'] = states.PARTICIPATING
         user_data['name'] = answer
         user_data['question'] = 0
-        # TODO: Send to rails the user that just registered
+        # TODO: Send to rails the user that just registered (quiz_id, phone, answer/name)
         print(f'{phone} registered to participate as {answer}')
         r.set(phone, json.dumps(user_data))
       elif user_data['state'] == states.PARTICIPATING:
-        # TODO: Get the question id to send it to the server
-        # TODO: Send the question to the server
+        question_id = exam_data['questions'][user_data['question']]
+        # TODO: Send the question to the server (quiz_id, question_id, phone)
         print(f'{phone} answered {answer} to question {user_data["question"]}')
         user_data['question'] += 1
-        if user_data['question'] == get_exam_data(user_data['test'])['num_questions']:
+        if user_data['question'] == exam_data['num_questions']:
           # This user has finished the exam, delete data
           r.delete(phone)
         else:
@@ -111,6 +116,12 @@ def handle_answers(phone, answer):
           'test': answer,
         }
         r.set(phone, json.dumps(user_data))
+
+def get_exam_data(exam_id):
+  exam_data = r.get(exam_id)
+  exam_data = json.loads(exam_data)
+  return exam_data
+
 
 @app.route("/sms/reply/", methods=['GET', 'POST'])
 def sms_reply():
@@ -126,11 +137,6 @@ def sms_reply():
 
     return str(resp)
 
-def get_exam_data(exam_id):
-  exam_data = r.get(exam_id)
-  exam_data = json.loads(exam_data)
-  return exam_data
-  
 @app.route("/send-sms/<user_phone>", methods=['POST'])
 def send_message():
     user_phone = user_phone
