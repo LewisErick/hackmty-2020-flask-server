@@ -94,7 +94,7 @@ def send_answer(phone: str, answer: str, timestamp: datetime.datetime):
   }
   requests.post(os.environ.get("API_ADDRESS"), data)
 
-def handle_answers(phone, answer):
+def handle_answers(phone, answer, timestamp):
     # If the phone exists then the user might be sending an answer or his name
     if r.exists(phone):
       user_data = r.get(phone)
@@ -119,7 +119,7 @@ def handle_answers(phone, answer):
         else:
           r.set(phone, json.dumps(user_data))
         
-        send_answer(phone, answer)
+        send_answer(phone, answer, timestamp)
     else:
       # Register the user for the test initializing the users data
       if r.exists(answer):
@@ -142,11 +142,11 @@ def sms_reply():
 
     record = client.messages(request.values.get('SmsSid')).fetch()
     date_created = record.date_created
-    
+
     # Start our TwiML response.
     resp = MessagingResponse()
 
-    # handle_answers(phone, body, date_created)
+    handle_answers(phone, body, date_created)
       
     # Add a text message
     msg = resp.message("Your Phone Number is: %s" % phone)
