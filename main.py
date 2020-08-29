@@ -1,3 +1,4 @@
+import requests
 import redis
 import os
 import json
@@ -85,7 +86,11 @@ class states:
   PARTICIPATING = "PARTICIPATING"
 
 def send_answer(phone: str, answer: str):
-  pass
+  data = {
+    'phone': phone,
+    'str': str
+  }
+  requests.post(os.environ.get("API_ADDRESS"), data)
 
 def handle_answers(phone, answer):
     # If the phone exists then the user might be sending an answer or his name
