@@ -1,3 +1,4 @@
+import datetime
 import requests
 import redis
 import os
@@ -15,9 +16,9 @@ app = Flask(__name__)
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=os.environ['REDIS_PORT'], db=0)
 
 # Set up Twilio client.
-# account_sid = os.environ.get("ACCOUNT_SID")
-# auth_token = os.environ.get("AUTH_TOKEN")
-# client = Client(account_sid, auth_token)
+account_sid = os.environ.get("ACCOUNT_SID")
+auth_token = os.environ.get("AUTH_TOKEN")
+client = Client(account_sid, auth_token)
 
 """
 Start an exam. It gets the id of the test and returns a random generated number
@@ -85,10 +86,11 @@ class states:
   REGISTRATION = "REGISTRATION"
   PARTICIPATING = "PARTICIPATING"
 
-def send_answer(phone: str, answer: str):
+def send_answer(phone: str, answer: str, timestamp: datetime.datetime):
   data = {
     'phone': phone,
-    'str': str
+    'str': str,
+    'timestamp': timestamp
   }
   requests.post(os.environ.get("API_ADDRESS"), data)
 
@@ -137,17 +139,21 @@ def get_exam_data(exam_id):
 def sms_reply():
     body = request.values.get('Body', None)
     phone = request.values.get('From', None)
+
+    record = client.messages(request.values.get('SmsSid')).fetch()
+    date_created = record.date_created
+    print(type(date_created))
     # Start our TwiML response.
     resp = MessagingResponse()
 
-    handle_answers(phone, body)
+    # handle_answers(phone, body, date_created)
       
     # Add a text message
     msg = resp.message("Your Phone Number is: %s" % phone)
 
     return str(resp)
 
-@app.route("/send-sms/<user_phone>", methods=['POST'])
+@app.route("/sms/send/<user_phone>", methods=['POST'])
 def send_message():
     user_phone = user_phone
     message = client.messages.create(
@@ -183,13 +189,14 @@ def gather():
     resp = VoiceResponse()
 
     phone = request.values.get('From', None)
+    date_created = datetime.datetime.now()
 
     # If Twilio's request to our app included already gathered digits,
     # process them
     if 'Digits' in request.values:
         # Get which digit the caller chose
         choice = request.values['Digits']
-        handle_answers(phone, choice)
+        handle_answers(phone, choice, date_created)
 
     # Go back to call.
     resp.redirect('/answer/')
