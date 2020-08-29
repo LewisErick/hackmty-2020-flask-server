@@ -142,7 +142,7 @@ def sms_reply():
 
     record = client.messages(request.values.get('SmsSid')).fetch()
     date_created = record.date_created
-    print(type(date_created))
+    
     # Start our TwiML response.
     resp = MessagingResponse()
 
