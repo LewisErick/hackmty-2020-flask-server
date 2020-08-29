@@ -177,7 +177,7 @@ def gather():
     if 'Digits' in request.values:
         # Get which digit the caller chose
         choice = request.values['Digits']
-        send_answer(phone, choice)
+        handle_answers(phone, choice)
 
     # If the user didn't choose 1 or 2 (or anything), send them back to /voice
     resp.redirect('/answer/')
