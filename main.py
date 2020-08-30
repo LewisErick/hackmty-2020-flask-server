@@ -10,7 +10,11 @@ from twilio.twiml.voice_response import Play, VoiceResponse, Gather
 from twilio.twiml.messaging_response import MessagingResponse
 from random import randint
 
+from flask_cors import CORS, cross_origin
+
 app = Flask(__name__)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 # Set up Redis
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=os.environ['REDIS_PORT'], db=0)
@@ -36,6 +40,7 @@ Returns:
 }
 """
 @app.route('/start', methods=['POST'])
+@cross_origin()
 def start_exam():
   req_data = request.get_json()
   exam_id = req_data['exam_id']
@@ -121,7 +126,6 @@ def handle_answers(phone, answer, ts):
         register_student(answer, phone, quiz_id)
         return f'{phone} se registró con el nombre {answer}'
       elif user_data['state'] == states.PARTICIPATING:
-        question_id = exam_data['questions'][user_data['question']]        
         user_data['question'] += 1
         if user_data['question'] == exam_data['num_questions']:
           # This user has finished the exam, delete data
