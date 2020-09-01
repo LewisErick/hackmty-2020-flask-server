@@ -24,6 +24,9 @@ account_sid = os.environ.get("ACCOUNT_SID")
 auth_token = os.environ.get("AUTH_TOKEN")
 client = Client(account_sid, auth_token)
 
+USER_EXPIRY_TIME = 5 * 60 # 5 minutes
+EXAM_EXPIRY_TIME = 15 * 60 # 15 minutes
+
 """
 Start an exam. It gets the id of the test and returns a random generated number
 to identify this test in the flask server.
@@ -62,7 +65,7 @@ def register_exam(exam_id, num_questions, questions):
     'questions': questions,
   }
   json_data = json.dumps(exam_data)
-  r.set(sms_id, json_data)
+  r.set(sms_id, json_data, ex=EXAM_EXPIRY_TIME)
   return sms_id
 
 """
@@ -121,7 +124,7 @@ def handle_answers(phone, answer, ts):
         user_data['state'] = states.PARTICIPATING
         user_data['name'] = answer
         user_data['question'] = 0
-        r.set(phone, json.dumps(user_data))
+        r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
 
         register_student(answer, phone, quiz_id)
         return f'{phone} se registró con el nombre {answer}'
@@ -129,9 +132,10 @@ def handle_answers(phone, answer, ts):
         user_data['question'] += 1
         if user_data['question'] == exam_data['num_questions']:
           # This user has finished the exam, delete data
+          print(f'User {phone} finished the test. Deleting user.')
           r.delete(phone)
         else:
-          r.set(phone, json.dumps(user_data))
+          r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
         
         send_answer(phone, answer, quiz_id, ts)
         return f'{phone} contestó {answer} a la pregunta {user_data["question"]}'
@@ -142,7 +146,7 @@ def handle_answers(phone, answer, ts):
           'state': states.REGISTRATION,
           'test': answer,
         }
-        r.set(phone, json.dumps(user_data))
+        r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
         return 'Se ha registrado exitosamente al cuestionario, ahora solo falta el nombre.'
       else:
         return 'El cuestionario no existe.'
