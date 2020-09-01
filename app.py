@@ -17,7 +17,7 @@ cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 
 # Set up Redis
-r = redis.Redis(host=os.environ['REDIS_HOST'], port=os.environ['REDIS_PORT'], db=0)
+r = redis.from_url(os.environ.get('REDIS_URL'))
 
 # Set up Twilio client.
 account_sid = os.environ.get("ACCOUNT_SID")
