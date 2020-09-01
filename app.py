@@ -20,9 +20,9 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 r = redis.from_url(os.environ.get('REDIS_URL'))
 
 # Set up Twilio client.
-# account_sid = os.environ.get("ACCOUNT_SID")
-# auth_token = os.environ.get("AUTH_TOKEN")
-# client = Client(account_sid, auth_token)
+account_sid = os.environ.get("ACCOUNT_SID")
+auth_token = os.environ.get("AUTH_TOKEN")
+client = Client(account_sid, auth_token)
 
 """
 Start an exam. It gets the id of the test and returns a random generated number
