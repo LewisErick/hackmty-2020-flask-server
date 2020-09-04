@@ -168,15 +168,14 @@ def sms_reply():
     # text_response = handle_answers(phone, body, date_created)
     text_response = None
 
+    # Start our TwiML response.
+    resp = MessagingResponse()
+
     if text_response is not None:
-        # Start our TwiML response.
-        resp = MessagingResponse()
         # Add a text message
         msg = resp.message(text_response, from_=os.environ.get('TWILIO_NUMBER'))
 
-        return str(resp)
-    else:
-        return "Success", 200
+    return str(resp)
 
 @app.route("/sms/send/<user_phone>", methods=['POST'])
 def send_message():
