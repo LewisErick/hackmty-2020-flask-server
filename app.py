@@ -175,6 +175,8 @@ def sms_reply():
         msg = resp.message(text_response, from_=os.environ.get('TWILIO_NUMBER'))
 
         return str(resp)
+    else:
+        return "Success", 200
 
 @app.route("/sms/send/<user_phone>", methods=['POST'])
 def send_message():
