@@ -166,7 +166,7 @@ def sms_reply():
     date_created = record.date_created
 
     # text_response = handle_answers(phone, body, date_created)
-    text_response = "Hello"
+    text_response = None
 
     if text_response is not None:
         # Start our TwiML response.
