@@ -165,8 +165,7 @@ def sms_reply():
     record = client.messages(request.values.get('SmsSid')).fetch()
     date_created = record.date_created
 
-    # text_response = handle_answers(phone, body, date_created)
-    text_response = None
+    text_response = handle_answers(phone, body, date_created)
 
     # Start our TwiML response.
     resp = MessagingResponse()
@@ -178,8 +177,7 @@ def sms_reply():
     return str(resp)
 
 @app.route("/sms/send/<user_phone>", methods=['POST'])
-def send_message():
-    user_phone = user_phone
+def send_message(user_phone):
     message = client.messages.create(
                 body='Hi there!',
                 from_=os.environ.get("TWILIO_NUMBER"),
