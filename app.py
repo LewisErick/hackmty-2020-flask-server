@@ -138,7 +138,7 @@ def handle_answers(phone, answer, ts):
           r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
         
         send_answer(phone, answer, quiz_id, ts)
-        return f'{phone} contestó {answer} a la pregunta {user_data["question"]}'
+        return None # f'{phone} contestó {answer} a la pregunta {user_data["question"]}'
     else:
       # Register the user for the test initializing the users data
       if r.exists(answer):
@@ -149,7 +149,7 @@ def handle_answers(phone, answer, ts):
         r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
         return 'Se ha registrado exitosamente al cuestionario, ahora solo falta el nombre.'
       else:
-        return 'El cuestionario no existe.'
+        return None # 'El cuestionario no existe.'
 
 def get_exam_data(exam_id):
   exam_data = r.get(exam_id)
@@ -165,15 +165,16 @@ def sms_reply():
     record = client.messages(request.values.get('SmsSid')).fetch()
     date_created = record.date_created
 
-    # Start our TwiML response.
-    resp = MessagingResponse()
+    # text_response = handle_answers(phone, body, date_created)
+    text_response = "Hello"
 
-    text_response = handle_answers(phone, body, date_created)
-      
-    # Add a text message
-    msg = resp.message(text_response)
+    if text_response is not None:
+        # Start our TwiML response.
+        resp = MessagingResponse()
+        # Add a text message
+        msg = resp.message(text_response, from_=os.environ.get('TWILIO_NUMBER'))
 
-    return str(resp)
+        return str(resp)
 
 @app.route("/sms/send/<user_phone>", methods=['POST'])
 def send_message():
