@@ -25,7 +25,7 @@ auth_token = os.environ.get("AUTH_TOKEN")
 client = Client(account_sid, auth_token)
 
 USER_EXPIRY_TIME = 20 * 60 # 5 minutes
-EXAM_EXPIRY_TIME = 30 * 60 # 30 minutes
+EXAM_EXPIRY_TIME = 45 * 60 # 30 minutes
 
 """
 Start an exam. It gets the id of the test and returns a random generated number
