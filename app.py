@@ -25,7 +25,7 @@ auth_token = os.environ.get("AUTH_TOKEN")
 client = Client(account_sid, auth_token)
 
 USER_EXPIRY_TIME = 5 * 60 # 5 minutes
-EXAM_EXPIRY_TIME = 15 * 60 # 15 minutes
+EXAM_EXPIRY_TIME = 30 * 60 # 30 minutes
 
 """
 Start an exam. It gets the id of the test and returns a random generated number
@@ -33,8 +33,6 @@ to identify this test in the flask server.
 Expected data in the request:
 {
   "exam_id": ID,
-  "num_questions": Number,
-  "questions": [Number],
 }
 
 Returns:
@@ -47,22 +45,18 @@ Returns:
 def start_exam():
   req_data = request.get_json()
   exam_id = req_data['exam_id']
-  num_questions = req_data['num_questions']
-  questions = req_data['questions']
-  sms_id = register_exam(exam_id, num_questions, questions)
+  sms_id = register_exam(exam_id)
   return {
     "sms_id": sms_id,
   }
 
 
-def register_exam(exam_id, num_questions, questions):
+def register_exam(exam_id):
   sms_id = None
   while sms_id is None or r.exists(sms_id):
     sms_id = str(randint(0, 999999)).zfill(6)
   exam_data = {
     'exam_id': exam_id,
-    'num_questions': num_questions,
-    'questions': questions,
   }
   json_data = json.dumps(exam_data)
   r.set(sms_id, json_data, ex=EXAM_EXPIRY_TIME)
@@ -123,19 +117,12 @@ def handle_answers(phone, answer, ts):
       if user_data['state'] == states.REGISTRATION:
         user_data['state'] = states.PARTICIPATING
         user_data['name'] = answer
-        user_data['question'] = 0
         r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
 
         register_student(answer, phone, quiz_id)
         return f'{phone} se registró con el nombre {answer}'
       elif user_data['state'] == states.PARTICIPATING:
-        user_data['question'] += 1
-        if user_data['question'] == exam_data['num_questions']:
-          # This user has finished the exam, delete data
-          print(f'User {phone} finished the test. Deleting user.')
-          r.delete(phone)
-        else:
-          r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
+        r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
         
         send_answer(phone, answer, quiz_id, ts)
         return None # f'{phone} contestó {answer} a la pregunta {user_data["question"]}'
@@ -172,7 +159,7 @@ def sms_reply():
 
     if text_response is not None:
         # Add a text message
-        msg = resp.message(text_response, from_=os.environ.get('TWILIO_NUMBER'))
+        msg = resp.message(text_response)
 
     return str(resp)
 
