@@ -24,7 +24,7 @@ account_sid = os.environ.get("ACCOUNT_SID")
 auth_token = os.environ.get("AUTH_TOKEN")
 client = Client(account_sid, auth_token)
 
-USER_EXPIRY_TIME = 5 * 60 # 5 minutes
+USER_EXPIRY_TIME = 20 * 60 # 5 minutes
 EXAM_EXPIRY_TIME = 30 * 60 # 30 minutes
 
 """
