@@ -125,7 +125,8 @@ def handle_answers(phone, answer, ts):
         r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
         
         send_answer(phone, answer, quiz_id, ts)
-        return None # f'{phone} contestó {answer} a la pregunta {user_data["question"]}'
+        print(f'{phone} contestó {answer} a la pregunta {user_data["question"]}')
+        return None
     else:
       # Register the user for the test initializing the users data
       if r.exists(answer):
@@ -153,6 +154,7 @@ def sms_reply():
     date_created = record.date_created
 
     text_response = handle_answers(phone, body, date_created)
+    print(f'Message from {phone} with {body}')
 
     # Start our TwiML response.
     resp = MessagingResponse()
@@ -161,6 +163,7 @@ def sms_reply():
         # Add a text message
         msg = resp.message(text_response)
 
+    print(str(resp))
     return str(resp)
 
 @app.route("/sms/send/<user_phone>", methods=['POST'])
