@@ -136,7 +136,7 @@ def handle_answers(phone, answer, ts):
           'test': answer,
         }
         r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
-        return 'Se ha registrado exitosamente al cuestionario, ahora solo falta el nombre.'
+        return 'Se ha registrado exitosamente al cuestionario, ahora solo falta tu nombre.'
       else:
         return None # 'El cuestionario no existe.'
 
