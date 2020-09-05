@@ -120,12 +120,13 @@ def handle_answers(phone, answer, ts):
         r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
 
         register_student(answer, phone, quiz_id)
-        return f'{phone} se registró con el nombre {answer}'
+        print(f'{phone} se registró con el nombre {answer}')
+        return None
       elif user_data['state'] == states.PARTICIPATING:
         r.set(phone, json.dumps(user_data), ex=USER_EXPIRY_TIME)
         
         send_answer(phone, answer, quiz_id, ts)
-        print(f'{phone} contestó {answer} a la pregunta {user_data["question"]}')
+        print(f'{phone} contestó {answer} a la pregunta')
         return None
     else:
       # Register the user for the test initializing the users data
